@@ -20,4 +20,10 @@ urlpatterns = [
 
     # Add entry
     path('new_entry/<int:topic_id>/',views.new_entry, name='new_entry'),
+
+    # Edit entry
+    # The ID passed in the URL is stored inthe parameter `entry_id`.
+    # The URL pattern sends requests that match this format to the view 
+    # function `edit_entry()`.
+    path('edit_entry/<int:entry_id>/', views.edit_entry, name='edit_entry')
 ]

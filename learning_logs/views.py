@@ -1,7 +1,7 @@
 from multiprocessing import context
 from django.shortcuts import render, redirect
 
-from .models import Topic
+from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
 
 # Create your views here.
@@ -75,3 +75,31 @@ def new_entry(request, topic_id):
 
     context = {'topic':topic, 'form':form}
     return render(request, 'learning_logs/learning_logs/templates/new_entry.html',context)
+
+
+def edit_entry(request, entry_id):
+    """Edit an existing entry."""
+
+    # Get the entry object that the user wants to edit...
+    entry = Entry.objects.get(id=entry_id)
+    # ... and the topic associated with this entry.
+    topic = entry.topic
+
+    # GET request
+    if request.method != 'POST':
+        # `instance=entry` tells django to create the form prefilled with the info
+        # from the existing entry object.
+        form = EntryForm(instance=entry)
+    else:
+        # POST data submitted: process data
+        # Tell django to create a form instance based on the info associated with 
+        # the the existing entry object, updated with any relevenat data from 
+        # `request.POST`
+        form = EntryForm(instance=entry, data=request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('learning_logs:topic', topic_id=topic.id)
+
+    context = {'entry':entry, 'topic':topic, 'form':form}
+    return render(request, 'learning_logs/learning_logs/templates/edit_entry.html',context)
+
