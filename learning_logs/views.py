@@ -1,5 +1,7 @@
 from multiprocessing import context
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+from django.http import Http404
 
 from .models import Topic, Entry
 from .forms import TopicForm, EntryForm
@@ -10,11 +12,12 @@ def index(request):
     """The homepage"""
     return render(request, 'learning_logs/learning_logs/templates/index.html')
 
+@login_required
 def topics(request):
     """Show all topics"""
 
     #  database query asking for Topics and sorting by the date_added attributed
-    topics = Topic.objects.order_by('date_added')
+    topics = Topic.objects.filter(owner=request.user).order_by('date_added')
 
     # context sent to the template. A context is a dictionary in which the keys are
     # names used in the template to access data, and the values are the data we to
@@ -28,15 +31,21 @@ def topics(request):
 
 # The function accepts the value captured by `/<int:topic_id>/` and stores it in 
 # `topic_id`
+@login_required
 def topic(request, topic_id):
     """Show a single topic and all its entries."""
     topic = Topic.objects.get(id=topic_id)
+
+    if topic.owner != request.user:
+        raise Http404
+    
     entries = topic.entry_set.order_by('-date_added')
     context = {'topic':topic, 'entries':entries}
 
 
     return render(request, 'learning_logs/learning_logs/templates/topic.html', context)
 
+@login_required
 def new_topic(request):
     """Add a new topic."""
 
@@ -49,7 +58,9 @@ def new_topic(request):
         # pass it the data entered by the user, stored in `request.POST`.
         form = TopicForm(data=request.POST)
         if form.is_valid(): # form object returned contains the info the user submitted.
-            form.save() # write to database
+            new_topic = form.save(commit=False)
+            new_topic.owner = request.user
+            new_topic.save()
             return redirect('learning_logs:topics') # send user to topics page.
 
 
@@ -58,6 +69,7 @@ def new_topic(request):
     # Send the form the template in the context dictionary.
     return render(request, 'learning_logs/learning_logs/templates/new_topic.html', context)
 
+@login_required
 def new_entry(request, topic_id):
     '''Add a new entry for a particular topic'''
     topic = Topic.objects.get(id=topic_id)
@@ -76,7 +88,7 @@ def new_entry(request, topic_id):
     context = {'topic':topic, 'form':form}
     return render(request, 'learning_logs/learning_logs/templates/new_entry.html',context)
 
-
+@login_required
 def edit_entry(request, entry_id):
     """Edit an existing entry."""
 
@@ -84,6 +96,9 @@ def edit_entry(request, entry_id):
     entry = Entry.objects.get(id=entry_id)
     # ... and the topic associated with this entry.
     topic = entry.topic
+
+    if topic.owner != request.user:
+        raise Http404
 
     # GET request
     if request.method != 'POST':
